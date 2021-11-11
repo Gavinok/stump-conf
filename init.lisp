@@ -50,10 +50,6 @@
 
 
 ;; General Top Level Bindings
-(define-key *top-map* (kbd "s-h") "move-focus left")
-(define-key *top-map* (kbd "s-j") "move-focus down")
-(define-key *top-map* (kbd "s-k") "move-focus up")
-(define-key *top-map* (kbd "s-l") "move-focus right")
 (define-key *top-map* (kbd "s-n") "pull-hidden-next")
 (define-key *top-map* (kbd "s-p") "pull-hidden-previous")
 (define-key *top-map* (kbd "s-TAB") "fnext")
@@ -196,19 +192,45 @@
                                 (when (member command winner-mode:*default-commands*)
                                   (winner-mode:dump-group-to-file))))
 
+;; Treat emacs splits like Xorg windows
 (defun is-emacs-p (win)
-  (string-equal (window-class win) "Emacs"))
+  "nil if the WIN"
+  (when win
+    (string-equal (window-class win) "Emacs")))
 
-(defun eval-emacslisp (expression)
+(defun eval-el (expression)
+  "evaluate a string as emacs lisp"
   (run-shell-command (concat "emacsclient -e '" expression "'") t))
 
+(defun exec-el (expression)
+  "execute emacs lisp do not collect it's output"
+  (run-shell-command (concat "emacsclient -e '" expression "'") nil))
+
 (defun emacs-winmove (direction)
-  (eval-emacslisp (concat "(windmove-" direction ")")))
+  "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
+  (eval-el (concat "(windmove-" direction ")")))
 
-(emacs-winmove "left")
+(defun better-move-focus (dir coldir)
+  "Similar to move-focus but also treats emacs windows as Xorg windows"
+  (let ((mv `(move-focus ,coldir)))
+    (if (is-emacs-p (current-window))
+        (when
+            ;; There is not emacs window in that direction
+            (= (length (emacs-winmove dir))
+               1)
+          (eval mv))
+      (eval mv))))
 
-(eval-emacslisp "(window-left (window-normalize-window nil t))")
+(defcommand mv-up () ()
+  (better-move-focus "up" ':up))
+(defcommand mv-dwn () ()
+  (better-move-focus "down" ':down))
+(defcommand mv-lft () ()
+  (better-move-focus "left" ':left))
+(defcommand mv-rt () ()
+  (better-move-focus "right" ':right))
 
-(window-normalize-window nil t)
-
-(concat "exec ")
+(define-key *top-map* (kbd "s-h") "mv-lft")
+(define-key *top-map* (kbd "s-j") "mv-dwn")
+(define-key *top-map* (kbd "s-k") "mv-up")
+(define-key *top-map* (kbd "s-l") "mv-rt")
