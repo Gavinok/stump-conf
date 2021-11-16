@@ -120,6 +120,9 @@
 
 (define-key *root-map* (kbd "M-o") "fnext")
 (define-key *root-map* (kbd "SPC") "exec cabl -c")
+;; more usful alternatives to i and I
+(define-key *root-map* (kbd "i") "show-window-properties")
+(define-key *root-map* (kbd "I") "list-window-properties")
 
 ;;; Groups
 (grename "main")
