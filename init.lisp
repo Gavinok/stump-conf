@@ -23,7 +23,11 @@
         "#53cdbd"   ;cyan
         "#b7bec9")) ;white
 
+(setf *default-bg-color* "#e699cc")
+
 (update-color-map (current-screen))
+
+(setf *window-format* "%m%s%50t")
 
 ;;; Basic Settings
 (setf *mode-line-background-color* (car *colors*)
