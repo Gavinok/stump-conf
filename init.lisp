@@ -117,6 +117,43 @@
 
 (defcommand move-to-trash () ()
   (stumpwm:run-commands "gmove .trash"))
+;;; Floating Windows
+;; slop taken from https://github.com/lepisma/cfg
+(defun floatingp (window)
+  "Return T if WINDOW is floating and NIL otherwise"
+  (typep window 'stumpwm::float-window))
+
+(defun slop-get-pos ()
+  (mapcar #'parse-integer (ppcre:split "[^0-9]" (run-shell-command "slop -f \"%x %y %w %h\"" t))))
+
+(defun slop ()
+  "Slop the current window or just float if slop cli not present."
+  (if (executable-p "slop")
+      (let ((win    (current-window))
+            (group  (current-group))
+            (screen (current-screen))
+            (pos    (slop-get-pos)))
+        (stumpwm::float-window win group)
+        (stumpwm::float-window-move-resize win
+                                  :x (nth 0 pos)
+                                  :y (nth 1 pos)
+                                  :width (nth 2 pos)
+                                  :height (nth 3 pos))
+        ;; TODO use method from toggle-always-on-top instead
+        (stumpwm::always-show-window win screen))))
+
+(defcommand toggle-slop-this () ()
+  (let ((win    (current-window))
+        (group  (current-group))
+        (screen (current-screen)))
+    (if (floatingp win)
+        (progn (stumpwm::disable-always-show-window win screen)
+               (stumpwm::unfloat-window win group))
+      (slop))))
+
+(define-key *top-map* (kbd "s-z") "toggle-slop-this")
+(define-key *root-map* (kbd "z")  "toggle-slop-this")
+
 ;;; Splits
 (defcommand hsplit-and-focus () ()
   "create a new frame on the right and focus it."
