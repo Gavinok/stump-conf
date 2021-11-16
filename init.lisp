@@ -1,6 +1,16 @@
 (in-package :stumpwm)
 
-;;; Helper Functions
+(defun file-readable-p (file)
+  "Return t, if FILE is available for reading."
+  (handler-case
+      (with-open-file (f file)
+        (and (read-line f) t))
+    (stream-error () nil)))
+
+(defun executable-p (name)
+  "Tell if given executable is present in PATH."
+  (let ((which-out (string-trim '(#\  #\linefeed) (run-shell-command (concat "which " name) t))))
+    (unless (string-equal "" which-out) which-out)))
 
 ;;; Theme
 (setf *colors*
