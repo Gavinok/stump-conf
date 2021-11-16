@@ -1,3 +1,5 @@
+;;; -*-  mode: lisp; -*-
+
 (in-package :stumpwm)
 
 (defun file-readable-p (file)
