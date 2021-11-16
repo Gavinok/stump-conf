@@ -222,7 +222,8 @@
 ;; Get Fit
 (defvar *reps* 0)
 (defcommand add-reps (reps) ((:number "Enter reps: "))
-  (setq *reps* (+ *reps* reps)))
+  (when reps
+    (setq *reps* (+ *reps* reps))))
 (defcommand reset-reps () ()
   (setq *reps* 0))
 
