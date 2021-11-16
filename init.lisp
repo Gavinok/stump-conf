@@ -75,14 +75,11 @@
 (define-key *root-map* (kbd "r") "remove")
 (define-key *root-map* (kbd "R") "iresize")
 (define-key *root-map* (kbd "f") "fullscreen")
+(define-key *root-map* (kbd "Q") "quit-confirm")
+(define-key *root-map* (kbd "q") "only")
 
-;; floating
-;; (define-key *root-map* (kbd "z") '*float-map*)
-;; (defvar *float-map*
-;;   (let ((m (make-sparse-keymap)))
-;;     (define-key m (kbd "f") "float-this")
-;;     (define-key m (kbd "u") "unfloat-this")
-;;     m))
+(define-key *root-map* (kbd "M-o") "fnext")
+(define-key *root-map* (kbd "SPC") "exec cabl -c")
 
 ;;; Splits
 (defcommand hsplit-and-focus () ()
