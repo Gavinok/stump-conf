@@ -226,6 +226,7 @@
        "^>"
        '(:eval (if (> *reps* 0) (format nil "^1^B(Reps ~A)^n " *reps*)))
        ;; Date
+       "^7"
        '(:eval (run-shell-command "date +\"%a, %b %d %I:%M%p\" | tr '\\n' ' '" t))
        " ^7[^n%B^7]^n "))
 
