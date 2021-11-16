@@ -69,6 +69,8 @@
 (define-key *top-map* (kbd "s-f") "fullscreen")
 (define-key *top-map* (kbd "s-q") "only")
 (define-key *top-map* (kbd "s-RET") "exec emacsclient -c -a 'emacs'")
+(define-key *top-map* (kbd "s-=")  "exec menu_connection_manager.sh")
+(define-key *top-map* (kbd "s-X")  "exec power_menu.sh")
 
 ;;; Volume Stuff
 (let ((vdown "exec cm down 5")
