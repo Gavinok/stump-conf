@@ -213,6 +213,12 @@
 (load-module "wifi")
 ;;Requires me to setup quicklisp
 
+(defun enable-mode-line-everywhere ()
+  (loop for screen in *screen-list* do
+    (loop for head in (screen-heads screen) do
+	    (enable-mode-line screen head t))))
+(enable-mode-line-everywhere)
+
 ;; Get Fit
 (defvar *reps* 0)
 (defcommand add-reps (reps) ((:number "Enter reps: "))
