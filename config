@@ -293,6 +293,10 @@
                                   (winner-mode:dump-group-to-file))))
 
 ;;; Emacs integration
+(defcommand emacs () () ; override default emacs command
+  "Start emacs if emacsclient is not running and focus emacs if it is
+running in the current group"
+  (run-or-raise "emacsclient -c -a 'emacs'" '(:class "Emacs")))
 ;; Treat emacs splits like Xorg windows
 (defun is-emacs-p (win)
   "nil if the WIN"
