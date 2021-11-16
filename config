@@ -104,9 +104,9 @@
   (run-shell-command (if prg
                          (format nil "st -e ~A" prg)
                        "st")))
-(define-key *root-map* (kbd "c") "term")
-(define-key *root-map* (kbd "y") "eval (term \"cm\")")
+(define-key *root-map* (kbd "c")   "term")
 (define-key *root-map* (kbd "C-c") "term")
+(define-key *root-map* (kbd "y") "eval (term \"cm\")")
 (define-key *root-map* (kbd "w") "exec ducksearch")
 
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
@@ -155,6 +155,9 @@
 
 (defcommand move-to-trash () ()
   (stumpwm:run-commands "gmove .trash"))
+
+(define-key *top-map* (kbd "s-]") "move-to-trash")
+(define-key *top-map* (kbd "s-[") "pull-from-trash")
 ;;; Floating Windows
 ;; slop taken from https://github.com/lepisma/cfg
 (defun floatingp (window)
