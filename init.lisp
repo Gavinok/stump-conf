@@ -62,6 +62,28 @@
   (define-key m (kbd "XF86AudioLowerVolume") vdown)
   (define-key m (kbd "s-C-f")                vup)
   (define-key m (kbd "XF86AudioRaiseVolume") vup))
+
+;;; Brightness
+(when *initializing*
+  (defconstant backlightfile "/sys/class/backlight/intel_backlight/brightness"))
+
+;; Xbacklight broak so I made this
+(defcommand brighten (val) ((:number "Change brightness by: "))
+  (with-open-file (fp backlightfile
+                      :if-exists :overwrite
+                      :direction :io)
+                      (write-sequence (write-to-string (+ (parse-integer (read-line fp nil)) val))
+                                      fp)))
+
+(let ((bdown "brighten -1000")
+      (bup   "brighten  1000")
+      (m *top-map*))
+  (define-key m (kbd "s-C-s")                 bdown)
+  (define-key m (kbd "XF86MonBrightnessDown") bdown)
+  (define-key m (kbd "s-C-d")                 bup)
+  (define-key m (kbd "XF86MonBrightnessUp")   bup))
+
+;;; General Root Level Bindings
 (defcommand term (&optional prg) ()
   (run-shell-command (if prg
                          (format nil "st -e ~A" prg)
