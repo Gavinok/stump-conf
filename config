@@ -210,14 +210,6 @@
 
 ;;; Mode-Line
 (load-module "battery-portable")
-(load-module "wifi")
-;;Requires me to setup quicklisp
-
-(defun enable-mode-line-everywhere ()
-  (loop for screen in *screen-list* do
-    (loop for head in (screen-heads screen) do
-	    (enable-mode-line screen head t))))
-(enable-mode-line-everywhere)
 
 ;; Get Fit
 (defvar *reps* 0)
@@ -246,8 +238,11 @@
        '(:eval (run-shell-command "date +\"%a, %b %d %I:%M%p\" | tr '\\n' ' '" t))
        " ^7[^n%B^7]^n "))
 
-(mode-line)
-;; (enable-mode-line (current-screen) (current-head) t)
+(defun enable-mode-line-everywhere ()
+  (loop for screen in *screen-list* do
+    (loop for head in (screen-heads screen) do
+	    (enable-mode-line screen head t))))
+(enable-mode-line-everywhere)
 ;; turn on/off the mode line for the current head only.
 (define-key *root-map* (kbd "B") "mode-line")
 
