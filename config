@@ -323,19 +323,19 @@
 
 (defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
-  (let ((mv `(move-focus ,(intern ogdir "KEYWORD"))))
+  (let ((mv `(move-focus ,(intern (string ogdir) "KEYWORD"))))
     (if (is-emacs-p (current-window))
         (when
             ;; There is not emacs window in that direction
             (= (length (emacs-winmove
-                        (string-downcase ogdir)))
+                        (string-downcase (string ogdir))))
                1)
           (eval mv))
         (eval mv))))
 
-(defcommand my-mv (dir) ((:string "Enter direction: "))
-            (better-move-focus (string-upcase dir)))
-
+(defcommand my-mv (dir) ((:direction "Enter direction: "))
+  (when dir
+    (better-move-focus (string-upcase dir))))
 (define-key *top-map* (kbd "s-h") "my-mv left")
 (define-key *top-map* (kbd "s-j") "my-mv down")
 (define-key *top-map* (kbd "s-k") "my-mv up")
