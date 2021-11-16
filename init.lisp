@@ -94,6 +94,29 @@
 (define-key *groups-map* (kbd "b") "global-pull-windowlist")
 
 
+;;;; Hide and Show Windows
+(defun window-menu-format (w)
+  (list (format-expand *window-formatters* *window-format* w) w))
+
+(defun window-from-menu (windows)
+  (when windows
+    (second (select-from-menu
+             (group-screen (window-group (car windows)))
+             (mapcar 'window-menu-format windows)))))
+
+(defun windows-in-group (group)
+  (group-windows (find group (screen-groups (current-screen))
+                       :key 'group-name :test 'equal)))
+
+(defcommand pull-from-trash () ()
+  (let* ((windows (windows-in-group ".trash"))
+         (window  (window-from-menu windows)))
+    (when window
+      (move-window-to-group window (current-group))
+      (stumpwm::pull-window window))))
+
+(defcommand move-to-trash () ()
+  (stumpwm:run-commands "gmove .trash"))
 ;;; Splits
 (defcommand hsplit-and-focus () ()
   "create a new frame on the right and focus it."
