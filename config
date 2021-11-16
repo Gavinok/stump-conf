@@ -212,6 +212,9 @@
   (move-focus :down))
 (define-key *root-map* (kbd "v") "hsplit-and-focus")
 (define-key *root-map* (kbd "s") "vsplit-and-focus")
+(loop for i in '("hsplit-and-focus"
+                 "vsplit-and-focus")
+do (dyn-blacklist-command i))
 
 ;;; Mode-Line
 (load-module "battery-portable")
