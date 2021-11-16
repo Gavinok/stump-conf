@@ -178,45 +178,46 @@
                                 (when (member command winner-mode:*default-commands*)
                                   (winner-mode:dump-group-to-file))))
 
+;;; Emacs integration
 ;; Treat emacs splits like Xorg windows
 (defun is-emacs-p (win)
   "nil if the WIN"
   (when win
     (string-equal (window-class win) "Emacs")))
 
-(defun eval-el (expression)
+(defun exec-el (expression)
+  "execute emacs lisp do not collect it's output"
+  (run-shell-command (concat "emacsclient -e '" (write-to-string
+                                                 expression) "'") nil))
+
+(defun eval-string-as-el (expression)
   "evaluate a string as emacs lisp"
   (run-shell-command (concat "emacsclient -e '" expression "'") t))
 
-(defun exec-el (expression)
-  "execute emacs lisp do not collect it's output"
-  (run-shell-command (concat "emacsclient -e '" expression "'") nil))
+(defun eval-el (expression)
+  "evaluate emacs lisp and collect it's output"
+  (eval-string-as-el (write-to-string expression)))
 
 (defun emacs-winmove (direction)
   "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
-  (eval-el (concat "(windmove-" direction ")")))
+  (eval-string-as-el (concat "(windmove-" direction ")")))
 
-(defun better-move-focus (dir coldir)
+(defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
-  (let ((mv `(move-focus ,coldir)))
+  (let ((mv `(move-focus ,(intern ogdir "KEYWORD"))))
     (if (is-emacs-p (current-window))
         (when
             ;; There is not emacs window in that direction
-            (= (length (emacs-winmove dir))
+            (= (length (emacs-winmove
+                        (string-downcase ogdir)))
                1)
           (eval mv))
-      (eval mv))))
+        (eval mv))))
 
-(defcommand mv-up () ()
-  (better-move-focus "up" ':up))
-(defcommand mv-dwn () ()
-  (better-move-focus "down" ':down))
-(defcommand mv-lft () ()
-  (better-move-focus "left" ':left))
-(defcommand mv-rt () ()
-  (better-move-focus "right" ':right))
+(defcommand my-mv (dir) ((:string "Enter direction: "))
+            (better-move-focus (string-upcase dir)))
 
-(define-key *top-map* (kbd "s-h") "mv-lft")
-(define-key *top-map* (kbd "s-j") "mv-dwn")
-(define-key *top-map* (kbd "s-k") "mv-up")
-(define-key *top-map* (kbd "s-l") "mv-rt")
+(define-key *top-map* (kbd "s-h") "my-mv left")
+(define-key *top-map* (kbd "s-j") "my-mv down")
+(define-key *top-map* (kbd "s-k") "my-mv up")
+(define-key *top-map* (kbd "s-l") "my-mv right")
