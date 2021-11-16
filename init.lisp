@@ -81,6 +81,19 @@
 (define-key *root-map* (kbd "M-o") "fnext")
 (define-key *root-map* (kbd "SPC") "exec cabl -c")
 
+;;; Groups
+(grename "main")
+(gnewbg ".trash") ;hidden group
+
+;; Don't jump between groups when switching apps
+(setf *run-or-raise-all-groups* nil)
+(define-key *groups-map* (kbd "d") "gnew-dynamic")
+(define-key *groups-map* (kbd "s") "gselect")
+
+(load-module "globalwindows")
+(define-key *groups-map* (kbd "b") "global-pull-windowlist")
+
+
 ;;; Splits
 (defcommand hsplit-and-focus () ()
   "create a new frame on the right and focus it."
