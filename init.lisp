@@ -207,9 +207,9 @@
 ;; Get Fit
 (defvar *reps* 0)
 (defcommand add-reps (reps) ((:number "Enter reps: "))
-  (setf *reps* (+ *reps* reps)))
+  (setq *reps* (+ *reps* reps)))
 (defcommand reset-reps () ()
-  (setf *reps* 0))
+  (setq *reps* 0))
 
 (defvar *gym-map*
   (let ((m (make-sparse-keymap)))
