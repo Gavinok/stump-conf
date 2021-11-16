@@ -2,15 +2,6 @@
 
 ;;; Helper Functions
 
-;; (defun show-key-seq (key seq val)
-;;   (message (print-key-seq (reverse seq))))
-;; (add-hook *key-press-hook* 'show-key-seq)
-
-;; (float-window-move-resize
-;;  (current-window)
-;;  :x 90 :y 90
-;;  :width 90
-;;  :height 90)
 ;;; Theme
 (setf *colors*
       '("#000000"   ;black
@@ -46,8 +37,7 @@
 (run-shell-command "xsetroot -cursor_name left_ptr")
 
 ;;; Bindings
-(set-prefix-key (kbd "C-z"))
-
+(set-prefix-key (kbd "M-ESC"))
 
 ;; General Top Level Bindings
 (define-key *top-map* (kbd "s-n") "pull-hidden-next")
@@ -61,30 +51,30 @@
 (define-key *top-map* (kbd "s-K") "move-window up")
 (define-key *top-map* (kbd "s-L") "move-window right")
 (define-key *top-map* (kbd "s-f") "fullscreen")
+(define-key *top-map* (kbd "s-q") "only")
+(define-key *top-map* (kbd "s-RET") "exec emacsclient -c -a 'emacs'")
 
 ;;; Volume Stuff
-(define-key *top-map* (kbd "s-C-a") "exec cm down 5")
-(define-key *top-map* (kbd "s-C-f") "exec cm up 5")
-
-;;; Terminal
-(define-key *root-map* (kbd "y") "eval (term \"cm\")")
-(define-key *root-map* (kbd "c") "term")
+(let ((vdown "exec cm down 5")
+      (vup "exec cm up 5")
+      (m *top-map*))
+  (define-key m (kbd "s-C-a")                vdown)
+  (define-key m (kbd "XF86AudioLowerVolume") vdown)
+  (define-key m (kbd "s-C-f")                vup)
+  (define-key m (kbd "XF86AudioRaiseVolume") vup))
 (defcommand term (&optional prg) ()
   (run-shell-command (if prg
                          (format nil "st -e ~A" prg)
                        "st")))
-
-;; General Root Level Bindings
-(define-key *root-map* (kbd "c") "exec st")
-(define-key *root-map* (kbd "C-c") "exec st")
-(define-key *root-map* (kbd "b") "windowlist")
-(define-key *root-map* (kbd "e") "exec emacsclient -c -a 'emacs'")
-(define-key *root-map* (kbd "C-e") "exec emacsclient -c -a 'emacs'")
+(define-key *root-map* (kbd "c") "term")
+(define-key *root-map* (kbd "y") "eval (term \"cm\")")
+(define-key *root-map* (kbd "C-c") "term")
 (define-key *root-map* (kbd "w") "exec ducksearch")
+
+(define-key *root-map* (kbd "b") "pull-from-windowlist")
 (define-key *root-map* (kbd "r") "remove")
 (define-key *root-map* (kbd "R") "iresize")
 (define-key *root-map* (kbd "f") "fullscreen")
-(define-key *root-map* (kbd "C-z") "send-raw-key")
 
 ;; floating
 ;; (define-key *root-map* (kbd "z") '*float-map*)
@@ -157,32 +147,28 @@
 ;;; Remaps
 (define-remapped-keys
   '(("(discord|Element)"
-     ("C-a"   . "Home")
-     ("C-e"   . "End")
-     ("C-n"   . "Down")
-     ("C-p"   . "Up")
-     ("C-f"   . "Right")
-     ("C-b"   . "Left")
-     ("C-v"   . "Next")
-     ("M-v"   . "Prior")
-     ("M-w"   . "C-c")
-     ("C-w"   . "C-x")
-     ("C-y"   . "C-v")
-     ("M-<"   . "Home")
-     ("M->"   . "End")
-     ("C-M-b" . "M-Left")
-     ("C-M-f" . "M-Right")
-     ("M-f"   . "C-Right")
-     ("M-b"   . "C-Left")
-     ("C-s"   . "C-f")
-     ("C-k"   . ("C-S-End" "C-x"))
-     ("C-j"   . "C-k"))))
-
-;;; Keyboard Mouse Movement
-(load-module "binwarp")
-(binwarp:define-binwarp-mode *root-map* "X" (:map *root-map*)
-    ((kbd "RET") "ratclick 1")
-    ((kbd "SPC") "ratclick 3"))
+     ("C-a"       . "Home")
+     ("C-e"       . "End")
+     ("C-n"       . "Down")
+     ("C-p"       . "Up")
+     ("C-f"       . "Right")
+     ("C-b"       . "Left")
+     ("C-v"       . "Next")
+     ("M-v"       . "Prior")
+     ("M-w"       . "C-c")
+     ("C-w"       . "C-x")
+     ("C-y"       . "C-v")
+     ("M-<"       . "Home")
+     ("M->"       . "End")
+     ("C-M-b"     . "M-Left")
+     ("C-M-f"     . "M-Right")
+     ("M-f"       . "C-Right")
+     ("M-b"       . "C-Left")
+     ("C-s"       . "C-f")
+     ("C-j"       . "C-k")
+     ("C-/"       . "C-z")
+     ("C-k"       . ("C-S-End" "C-x"))
+     )))
 
 ;;; Undo And Redo Functionality
 (load-module "winner-mode")
