@@ -22,6 +22,26 @@
   (let ((which-out (string-trim '(#\  #\linefeed) (run-shell-command (concat "which " name) t))))
     (unless (string-equal "" which-out) which-out)))
 
+(load "~/.cache/quicklisp/setup.lisp")
+;;; SLY setup
+(ql:quickload :slynk)
+(defparameter *stumpwm-slynk-session* nil)
+(defcommand start-slynk () ()
+  (handler-case
+      (defparameter *stumpwm-slynk-session*
+        (slynk:create-server
+         :dont-close t
+         :port slynk::default-server-port))
+    (error (c)
+      (format *error-output* "Error starting slynk: ~a~%" c))))
+
+(defcommand restart-slynk () ()
+  "Restart Slynk and reload source.
+This is needed if Sly updates while StumpWM is running"
+  (slynk:stop-server slynk::default-server-port)
+  (slynk:create-server :port slynk::default-server-port
+                       :dont-close t))
+
 ;;; Theme
 (setf *colors*
       '("#000000"   ;black
