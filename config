@@ -5,6 +5,10 @@
   (define-key *top-map* (kbd (concat "s-" key )) command)
   (define-key *root-map* (kbd key) command))
 
+;; path to modules
+;; git clone git@github.com:stumpwm/stumpwm-contrib.git ~/.config/stumpwm/modules
+(init-load-path #p"~/.config/stumpwm/modules/")
+
 ;;; Helper Functions
 (defun file-readable-p (file)
   "Return t, if FILE is available for reading."
