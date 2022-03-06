@@ -149,7 +149,6 @@
 (define-key *root-map* (kbd "R") "iresize")
 (define-key *root-map* (kbd "f") "fullscreen")
 (define-key *root-map* (kbd "Q") "quit-confirm")
-(define-key *root-map* (kbd "q") "only")
 
 (define-key *root-map* (kbd "M-o") "fnext")
 (define-key *root-map* (kbd "SPC") "exec cabl -c")
@@ -302,7 +301,7 @@ do (dyn-blacklist-command i))
 
 ;;; Remaps
 (define-remapped-keys
-  '(("(discord|Element)"
+  '(("(discord|Element|Google-chrome)"
      ("C-a"       . "Home")
      ("C-e"       . "End")
      ("C-n"       . "Down")
@@ -324,7 +323,7 @@ do (dyn-blacklist-command i))
      ("C-j"       . "C-k")
      ("C-/"       . "C-z")
      ("C-k"       . ("C-S-End" "C-x"))
-     )))
+     ("C-d"       . "Delete"))))
 
 ;;; Undo And Redo Functionality
 (load-module "winner-mode")
