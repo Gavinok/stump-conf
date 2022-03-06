@@ -45,7 +45,6 @@
       *mode-line-timeout* 1)
 
 (setf *message-window-gravity* :center
-      *input-window-gravity* :center
       *window-border-style* :thin
       *message-window-padding* 3
       *maxsize-border-width* 2
