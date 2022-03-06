@@ -1,6 +1,10 @@
 ;;; -*-  mode: lisp; -*-
 (in-package :stumpwm)
 
+(defun tr-define-key (key command)
+  (define-key *top-map* (kbd (concat "s-" key )) command)
+  (define-key *root-map* (kbd key) command))
+
 ;;; Helper Functions
 (defun file-readable-p (file)
   "Return t, if FILE is available for reading."
@@ -62,15 +66,21 @@
 (define-key *top-map* (kbd "s-ISO_Left_Tab") "fprev")
 
 (setf *resize-increment* 25)
+(tr-define-key "f" "fullscreen")
+(tr-define-key "q" "only")
+(tr-define-key "=" "exec menu_connection_manager.sh")
+(tr-define-key "X" "exec power_menu.sh")
+(tr-define-key "P" "exec clipmenu")
+(tr-define-key "d" "exec dmenu_run")
+(tr-define-key "RET" "exec emacsclient -c -a 'emacs'")
+(tr-define-key "D" "exec discord")
+
+;; Window Movement
+(dyn-blacklist-command "move-window")
 (define-key *top-map* (kbd "s-H") "move-window left")
 (define-key *top-map* (kbd "s-J") "move-window down")
 (define-key *top-map* (kbd "s-K") "move-window up")
 (define-key *top-map* (kbd "s-L") "move-window right")
-(define-key *top-map* (kbd "s-f") "fullscreen")
-(define-key *top-map* (kbd "s-q") "only")
-(define-key *top-map* (kbd "s-RET") "exec emacsclient -c -a 'emacs'")
-(define-key *top-map* (kbd "s-=")  "exec menu_connection_manager.sh")
-(define-key *top-map* (kbd "s-X")  "exec power_menu.sh")
 
 ;;; Volume Stuff
 (let ((vdown "exec cm down 5")
@@ -161,8 +171,10 @@
 (defcommand move-to-trash () ()
   (stumpwm:run-commands "gmove .trash"))
 
-(define-key *top-map* (kbd "s-]") "move-to-trash")
-(define-key *top-map* (kbd "s-[") "pull-from-trash")
+(tr-define-key "]" "move-to-trash")
+(tr-define-key "[" "pull-from-trash")
+
+
 ;;; Floating Windows
 ;; slop taken from https://github.com/lepisma/cfg
 (defun floatingp (window)
@@ -197,8 +209,7 @@
                (stumpwm::unfloat-window win group))
       (slop))))
 
-(define-key *top-map* (kbd "s-z") "toggle-slop-this")
-(define-key *root-map* (kbd "z")  "toggle-slop-this")
+(tr-define-key "z" "toggle-slop-this")
 
 ;;; Splits
 (defcommand hsplit-and-focus () ()
