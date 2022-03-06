@@ -59,6 +59,17 @@ This is needed if Sly updates while StumpWM is running"
 
 (setf *window-format* "%m%s%50t")
 
+;; Font
+;; (set-font "-xos4-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*")
+;; (ql:quickload :clx-truetype)
+;; (load-module "ttf-fonts")
+;; (set-font (make-instance 'xft:font
+;;                          :family "PragmataPro"
+;;                          :subfamily "Regular"
+;;                          :size 10
+;;                          :antialias t))
+
+(set-font "-xos4-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*")
 ;;; Basic Settings
 (setf *mode-line-background-color* (car *colors*)
       *mode-line-foreground-color* (car (last *colors*))
