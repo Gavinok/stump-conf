@@ -204,33 +204,49 @@
   "Return T if WINDOW is floating and NIL otherwise"
   (typep window 'stumpwm::float-window))
 
-(defun slop-get-pos ()
-  (mapcar #'parse-integer (ppcre:split "[^0-9]" (run-shell-command "slop -f \"%x %y %w %h\"" t))))
+(defun always-on-top-off (window) ()
+  "stop the given WINDOW from always being on top of other windows"
+  (let ((ontop-wins (group-on-top-windows (current-group))))
+    (setf (group-on-top-windows (current-group))
+          (remove window ontop-wins))))
 
+(defun always-on-top-on (window) ()
+  "set the given WINDOW to always be on top of other windows"
+  (let ((w window)
+        (windows (group-on-top-windows (current-group))))
+    (when w
+      (unless (find w windows)
+        (push window (group-on-top-windows (current-group)))))))
+
+
+(defun slop-get-pos ()
+  (mapcar #'parse-integer (ppcre:split "[^0-9]" (run-shell-command
+                                                 "slop -f \"%x %y %w %h\"" t))))
+
+(defvar *dynamic-group-master-split-ratio* 1/2)
 (defun slop ()
   "Slop the current window or just float if slop cli not present."
-  (if (executable-p "slop")
-      (let ((win    (current-window))
-            (group  (current-group))
-            (screen (current-screen))
-            (pos    (slop-get-pos)))
-        (stumpwm::float-window win group)
-        (stumpwm::float-window-move-resize win
-                                  :x (nth 0 pos)
-                                  :y (nth 1 pos)
-                                  :width (nth 2 pos)
-                                  :height (nth 3 pos))
-        ;; TODO use method from toggle-always-on-top instead
-        (stumpwm::always-show-window win screen))))
+  (when (executable-p "slop")
+    (let ((win    (current-window))
+          (group  (current-group))
+          (screen (current-screen))
+          (pos    (slop-get-pos)))
+      (stumpwm::float-window win group)
+      (stumpwm::float-window-move-resize win
+                                         :x (nth 0 pos)
+                                         :y (nth 1 pos)
+                                         :width (nth 2 pos)
+                                         :height (nth 3 pos))
+      (always-on-top-on win))))
 
 (defcommand toggle-slop-this () ()
   (let ((win    (current-window))
-        (group  (current-group))
-        (screen (current-screen)))
-    (if (floatingp win)
-        (progn (stumpwm::disable-always-show-window win screen)
-               (stumpwm::unfloat-window win group))
-      (slop))))
+        (group  (current-group)))
+    (cond
+      ((floatingp win)
+       (always-on-top-off win)
+       (stumpwm::unfloat-window win group))
+      (t (slop)))))
 
 (tr-define-key "z" "toggle-slop-this")
 
