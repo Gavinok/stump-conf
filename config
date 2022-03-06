@@ -14,7 +14,7 @@
   "Return t, if FILE is available for reading."
   (handler-case
       (with-open-file (f file)
-        (and (read-line f) t))
+        (read-line f))
     (stream-error () nil)))
 
 (defun executable-p (name)
@@ -177,7 +177,8 @@
   (when windows
     (second (select-from-menu
              (group-screen (window-group (car windows)))
-             (mapcar 'window-menu-format windows)))))
+             (mapcar 'window-menu-format windows)
+             "Select Window: "))))
 
 (defun windows-in-group (group)
   (group-windows (find group (screen-groups (current-screen))
@@ -245,15 +246,16 @@
   (move-focus :down))
 (define-key *root-map* (kbd "v") "hsplit-and-focus")
 (define-key *root-map* (kbd "s") "vsplit-and-focus")
-(loop for i in '("hsplit-and-focus"
+(loop :for i :in '("hsplit-and-focus"
                  "vsplit-and-focus")
-do (dyn-blacklist-command i))
+      :do (dyn-blacklist-command i))
 
 ;;; Mode-Line
 (load-module "battery-portable")
 
 ;; Get Fit
-(defvar *reps* 0)
+(defvar *reps* 0
+  "Variable for keeping track of reps")
 (defcommand add-reps (reps) ((:number "Enter reps: "))
   (when reps
     (setq *reps* (+ *reps* reps))))
@@ -267,16 +269,19 @@ do (dyn-blacklist-command i))
     m))
 (define-key *root-map* (kbd "ESC") '*gym-map*)
 
+(setf *time-modeline-string* "%a, %b %d %I:%M%p")
 (setf *screen-mode-line-format*
       (list
        ;; Groups
-       " ^7[^B^4%n^7^b]"
+       " ^7[^B^4%n^7^b] "
        ;; Pad to right
        "^>"
-       '(:eval (if (> *reps* 0) (format nil "^1^B(Reps ~A)^n " *reps*)))
+       '(:eval (when (> *reps* 0)
+                 (format nil "^1^B(Reps ~A)^n " *reps*)))
        ;; Date
        "^7"
-       '(:eval (run-shell-command "date +\"%a, %b %d %I:%M%p\" | tr '\\n' ' '" t))
+       "%d"
+       ;; Battery
        " ^7[^n%B^7]^n "))
 
 (defun enable-mode-line-everywhere ()
@@ -285,10 +290,7 @@ do (dyn-blacklist-command i))
 	    (enable-mode-line screen head t))))
 (enable-mode-line-everywhere)
 ;; turn on/off the mode line for the current head only.
-(define-key *root-map* (kbd "B") "mode-line")
-
-;; Font
-(set-font "-xos4-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*")
+(define-key *top-map* (kbd "s-B") "mode-line")
 
 ;;; Gaps
 (load-module "swm-gaps")
@@ -346,16 +348,17 @@ running in the current group"
 
 (defun exec-el (expression)
   "execute emacs lisp do not collect it's output"
-  (run-shell-command (concat "emacsclient -e '" (write-to-string
-                                                 expression) "'") nil))
+  (run-shell-command (concat "emacsclient -e '"
+                             (write-to-string expression) "'")
+                     nil))
 
 (defun eval-string-as-el (expression)
   "evaluate a string as emacs lisp"
   (run-shell-command (concat "emacsclient -e '" expression "'") t))
 
-(defun eval-el (expression)
+(defmacro eval-el (expression)
   "evaluate emacs lisp and collect it's output"
-  (eval-string-as-el (write-to-string expression)))
+  `(eval-string-as-el (write-to-string (quote ,expression))))
 
 (defun emacs-winmove (direction)
   "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
@@ -363,20 +366,76 @@ running in the current group"
 
 (defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
-  (let ((mv `(move-focus ,(intern (string ogdir) "KEYWORD"))))
+  (declare (type (member :up :down :left :right) ogdir))
+  (flet ((mv () (move-focus ogdir)))
     (if (is-emacs-p (current-window))
         (when
             ;; There is not emacs window in that direction
             (= (length (emacs-winmove
                         (string-downcase (string ogdir))))
                1)
-          (eval mv))
-        (eval mv))))
+          (mv))
+        (mv))))
 
 (defcommand my-mv (dir) ((:direction "Enter direction: "))
-  (when dir
-    (better-move-focus (string-upcase dir))))
+  (when dir (better-move-focus dir)))
+
 (define-key *top-map* (kbd "s-h") "my-mv left")
 (define-key *top-map* (kbd "s-j") "my-mv down")
 (define-key *top-map* (kbd "s-k") "my-mv up")
 (define-key *top-map* (kbd "s-l") "my-mv right")
+
+;;; Plumber Concept
+(defun xdg-open (x)
+  (run-shell-command (concat "xdg-open " x) nil))
+
+(defvar regex-cmds '((".*\.(png|jpeg|mp4|mkv)"  xdg-open)
+                     ("testing" (print "never hello"))
+                     ("never"  echo)
+                     ("hello"    "notify-send")))
+
+(defvar fallback-cmds '("tts.sh"
+                        "xdg-open"))
+
+(defun plumber-select (item)
+  (let ((selected (select-from-menu (current-screen) fallback-cmds "Select CMD: ")))
+    (plumber-handle-tools (car selected) item)))
+
+(defgeneric plumber-handle-tools (tool arg)
+  (:method ((tool symbol) (arg string))
+    (funcall (symbol-function tool) arg))
+  (:method ((tool string) (arg string))
+    (run-shell-command (concat tool " " arg)))
+  (:method ((tool cons) (arg string))
+    (eval tool))
+  (:method ((tool t) (arg string))
+    (plumber-select arg)))
+
+(defun plumber (&optional replacement-clip)
+  "An attempt at emulating plan9's plumber but in common lisp
+using REGEX-CMDS it will match the first argument against the clipboard using regex
+if the result matches then the 2nd argument is ran as a command with the clipboard as an argument,
+if the match is a lisp symbol it will call the function with the clipboard as an argument
+if the match is a string the the string will be concatenated with a space and the clipboard and ran as a shell command
+if the match is a cons cell it is assumed to be a lambda and will execute call the lambda with the clipboard as an argument"
+  (let* ((clip (if replacement-clip
+                   replacement-clip
+                   (uiop:run-program '("xsel") :output :string)))
+         (found (find clip
+                      regex-cmds
+                      :key 'car
+                      :test (lambda (clp cur) (ppcre:scan cur clp)))))
+
+    (if found
+        (plumber-handle-tools (second found) clip)
+        (plumber-select clip))))
+
+(defun plumber-test ()
+  (plumber)
+  (plumber "/home/gavinok/Pictures/city.png"))
+
+(defcommand connect-to-sly () ()
+  (unless *stumpwm-slynk-session*
+    (start-slynk))
+  (exec-el '(sly-connect "localhost" "4005"))
+  (emacs))
