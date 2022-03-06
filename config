@@ -123,8 +123,11 @@
                       (write-sequence (write-to-string (+ (parse-integer (read-line fp nil)) val))
                                       fp)))
 
-(let ((bdown "brighten -1000")
-      (bup   "brighten  1000")
+(let (;; If xbacklight doesn't work use this (requires special file permissions)
+      ;; (bdown "brighten -1000")
+      ;; (bup   "brighten  1000")
+      (bdown   "exec xbacklight -dec 10")
+      (bup     "exec xbacklight -inc 10")
       (m *top-map*))
   (define-key m (kbd "s-C-s")                 bdown)
   (define-key m (kbd "XF86MonBrightnessDown") bdown)
