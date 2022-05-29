@@ -417,7 +417,10 @@ running in the current group"
   "Similar to move-focus but also treats emacs windows as Xorg windows"
   (declare (type (member :up :down :left :right) ogdir))
   (flet ((mv () (progn (move-focus ogdir)
-                       (beckon:beckon))))
+                       ;; Make sure there is even a window to move the
+                       ;; mouse to
+                       (when (current-window)
+                         (beckon:beckon)))))
     (if (is-emacs-p (current-window))
         (when ;; There is not emacs window in that direction
             (= (length (emacs-winmove (string-downcase (string ogdir))))
