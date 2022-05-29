@@ -409,10 +409,15 @@ running in the current group"
   "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
   (eval-string-as-el (concat "(windmove-" direction ")") t))
 
+;; Used for warping the cursor
+(load-module "beckon")
+(define-key *root-map* (kbd "B") "beckon")
+
 (defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
   (declare (type (member :up :down :left :right) ogdir))
-  (flet ((mv () (move-focus ogdir)))
+  (flet ((mv () (progn (move-focus ogdir)
+                       (beckon:beckon))))
     (if (is-emacs-p (current-window))
         (when ;; There is not emacs window in that direction
             (= (length (emacs-winmove (string-downcase (string ogdir))))
