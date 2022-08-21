@@ -32,9 +32,9 @@
         "#7D8FA3"   ;blue
         "#ff99ff"   ;magenta
         "#53cdbd"   ;cyan
-        "#b7bec9")) ;white
+        "#ffffff")) ;white
 
-(setf *default-bg-color* "#e699cc")
+;; (setf *default-bg-color* "#e699cc")
 
 (update-color-map (current-screen))
 
