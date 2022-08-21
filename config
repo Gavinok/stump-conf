@@ -214,7 +214,7 @@
              "Select Window: "))))
 
 (defun windows-in-group (group)
-  (group-windows (find group (screen-groups (current-screen))
+  (group-windows (find group (the list (screen-groups (current-screen)))
                        :key 'group-name :test 'equal)))
 
 (defcommand pull-from-trash () ()
@@ -246,7 +246,7 @@
 (defun always-on-top-on (window) ()
   "set the given WINDOW to always be on top of other windows"
   (let ((w window)
-        (windows (group-on-top-windows (current-group))))
+        (windows (the list (group-on-top-windows (current-group)))))
     (when w
       (unless (find w windows)
         (push window (group-on-top-windows (current-group)))))))
