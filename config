@@ -261,7 +261,6 @@
   (when (executable-p "slop")
     (let ((win    (current-window))
           (group  (current-group))
-          (screen (current-screen))
           (pos    (slop-get-pos)))
       (stumpwm::float-window win group)
       (stumpwm::float-window-move-resize win
