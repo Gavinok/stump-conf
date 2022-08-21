@@ -168,12 +168,20 @@
 (define-key *root-map* (kbd "w") "exec ducksearch")
 
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
-(define-key *root-map* (kbd "r") "remove")
+
+
+;; Hide the current window but don't freak out if the current focus
+;; policy is :sloppy.
+(defcommand remove-lose-focus () ()
+  (let ((*mouse-focus-policy* :ignore))
+    (remove-split)))
+
+;; (define-key *root-map* (kbd "r") "remove")
+(define-key *root-map* (kbd "r") "remove-lose-focus")
 (define-key *root-map* (kbd "R") "iresize")
 (define-key *root-map* (kbd "f") "fullscreen")
 (define-key *root-map* (kbd "Q") "quit-confirm")
 
-(define-key *root-map* (kbd "M-o") "fnext")
 (define-key *root-map* (kbd "SPC") "exec cabl -c")
 ;; more usful alternatives to i and I
 (define-key *root-map* (kbd "i") "show-window-properties")
