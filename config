@@ -281,13 +281,6 @@
 
 (tr-define-key "z" "toggle-slop-this")
 
-;;; Set up for recording
-(defcommand recording () ()
-  (let ((group-name "recording"))
-    (gnewbg group-name)
-    (run-shell-command "obs" nil)
-    (define-frame-preference group-name (0 t t :class "obs"))))
-
 ;;; Splits
 (defcommand hsplit-and-focus () ()
   "create a new frame on the right and focus it."
@@ -427,6 +420,42 @@ running in the current group"
 (defun emacs-winmove (direction)
   "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
   (eval-string-as-el (concat "(windmove-" direction ")") t))
+
+;;; Set up for recording
+(defun setup-recording-environment (group-name)
+  "Sets up a recording environment and returns a function to start the
+necessary programs for recording a new YouTube video"
+  (let* ((obs-window (find-matching-windows
+                      (list :class "obs")
+                      t t))
+         (clip-browser-name "Recording-Clips")
+         (clip-directory "~/Videos/clips/")
+         (clip-browser-window (find-matching-windows
+                               (list :title clip-browser-name)
+                               t t)))
+    ;; Create the recording group
+    (define-frame-preference group-name
+      (0 t t :class "obs")
+      (0 t t :title "Recording-Clips"))
+    (gnew group-name)
+
+    ;; Setup obs
+    (unless obs-window
+      (run-shell-command "obs"))
+
+    ;; Create a window for previewing and managing clips
+    (unless clip-browser-window
+      (run-shell-command
+       (format nil
+               "emacsclient -c -F  '((name . \"~a\"))' -e '(dired \"~a\")'"
+               clip-browser-name
+               clip-directory))
+      ;; Set recording font
+      (exec-el (fontaine-set-preset 'large)))))
+
+(defcommand recording () ()
+  (setup-recording-environment "recording"))
+
 
 ;; Used for warping the cursor
 (load-module "beckon")
