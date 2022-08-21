@@ -15,7 +15,8 @@
 
 (defun executable-p (name)
   "Tell if given executable is present in PATH."
-  (let ((which-out (string-trim '(#\  #\linefeed) (run-shell-command (concat "which " name) t))))
+  (let ((which-out (string-trim '(#\  #\linefeed)
+                                (run-shell-command (concat "which " name) t))))
     (unless (string-equal "" which-out) which-out)))
 
 
@@ -462,10 +463,12 @@ necessary programs for recording a new YouTube video"
   (setup-recording-environment "recording"))
 
 
+;;; Moving the mouse for me
 ;; Used for warping the cursor
 (load-module "beckon")
 (define-key *root-map* (kbd "B") "beckon")
 
+;;; Window focusing
 (defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
   (declare (type (member :up :down :left :right) ogdir))
