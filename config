@@ -40,17 +40,25 @@
 
 (setf *window-format* "%m%s%50t")
 
-;; Font
-;; (set-font "-xos4-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*")
-;; (ql:quickload :clx-truetype)
-;; (load-module "ttf-fonts")
-;; (set-font (make-instance 'xft:font
-;;                          :family "PragmataPro"
-;;                          :subfamily "Regular"
-;;                          :size 10
-;;                          :antialias t))
+;;; Font
+(ql:quickload :clx-truetype)
 
-(set-font "-xos4-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*")
+;; Make sure my local fonts are avaliable
+(pushnew (concat (getenv "HOME")
+                 "/.local/share/fonts/")
+         xft:*font-dirs* :test #'string=)
+(xft:cache-fonts)
+
+(let ((parent-font "PragmataPro Liga"))
+  (when (find parent-font (the list (clx-truetype:get-font-families))
+              :test #'string=)
+    (load-module "ttf-fonts")
+    (set-font `(,(make-instance 'xft:font
+                                :family "PragmataPro Liga"
+                                :subfamily "Regular"
+                                :size 11
+                                :antialias t)))))
+
 ;;; Basic Settings
 (setf *mode-line-background-color* (car *colors*)
       *mode-line-foreground-color* (car (last *colors*))
