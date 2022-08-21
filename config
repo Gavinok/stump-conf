@@ -465,16 +465,19 @@ necessary programs for recording a new YouTube video"
   "Similar to move-focus but also treats emacs windows as Xorg windows"
   (declare (type (member :up :down :left :right) ogdir))
   (flet ((mv () (progn (move-focus ogdir)
-                       ;; Make sure there is even a window to move the
-                       ;; mouse to
+
+                       ;; Warp cursor when changing focus
                        (when (current-window)
-                         (beckon:beckon)))))
+                         (beckon:beckon))
+                       )))
     (if (is-emacs-p (current-window))
         (when ;; There is not emacs window in that direction
-            (= (length (emacs-winmove (string-downcase (string ogdir))))
-               1)
+            (length= (emacs-winmove (string-downcase (string ogdir)))
+                     1)
           (mv))
-        (mv))))
+        (mv)))
+  )
+
 
 (defcommand my-mv (dir) ((:direction "Enter direction: "))
   (when dir (better-move-focus dir)))
