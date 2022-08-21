@@ -301,9 +301,11 @@
 (load-module "battery-portable")
 
 ;; Get Fit
+(declaim (type fixnum *reps*))
 (defvar *reps* 0
   "Variable for keeping track of reps")
 (defcommand add-reps (reps) ((:number "Enter reps: "))
+  (declare (type fixnum reps))
   (when reps
     (setq *reps* (+ *reps* reps))))
 (defcommand reset-reps () ()
@@ -417,6 +419,9 @@ running in the current group"
   "evaluate emacs lisp and collect it's output"
   `(eval-string-as-el ,(write-to-string expression :case :downcase) t))
 
+(declaim (ftype
+          (function (string) (values string &optional))
+          emacs-winmove))
 (defun emacs-winmove (direction)
   "executes the emacs function winmove-DIRECTION where DIRECTION is a string"
   (eval-string-as-el (concat "(windmove-" direction ")") t))
