@@ -1,5 +1,16 @@
 ;;; -*-  mode: lisp; -*-
 (in-package :stumpwm)
+;;; Setup Modules and Quicklisp
+;; path to modules
+;; git clone git@github.com:stumpwm/stumpwm-contrib.git ~/.config/stumpwm/modules
+(init-load-path #p"~/.config/stumpwm/modules/")
+(let ((quicklisp-init (merge-pathnames ".cache/quicklisp/setup.lisp"
+                                       (user-homedir-pathname))))
+  (when (probe-file quicklisp-init)
+    (load quicklisp-init)))
+
+;; (setq *debug-level* 5)
+;; (redirect-all-output (data-dir-file "debug-output" "txt"))
 
 ;;; Helpers
 (defun tr-define-key (key command)
@@ -10,7 +21,7 @@
   "Return t, if FILE is available for reading."
   (handler-case
       (with-open-file (f file)
-        (read-line f))
+                      (read-line f))
     (stream-error () nil)))
 
 (defun executable-p (name)
@@ -19,11 +30,86 @@
                                 (run-shell-command (concat "which " name) t))))
     (unless (string-equal "" which-out) which-out)))
 
+(defun window-menu-format (w)
+  (list (format-expand *window-formatters* *window-format* w) w))
 
-;; path to modules
-;; git clone git@github.com:stumpwm/stumpwm-contrib.git ~/.config/stumpwm/modules
-(init-load-path #p"~/.config/stumpwm/modules/")
-(load "~/.cache/quicklisp/setup.lisp")
+(defun window-from-menu (windows)
+  (when windows
+    (second (select-from-menu
+             (group-screen (window-group (car windows)))
+             (mapcar 'window-menu-format windows)
+             "Select Window: "))))
+
+(defun windows-in-group (group)
+  (group-windows (find group (the list (screen-groups (current-screen)))
+                       :key 'group-name :test 'equal)))
+
+(defun floatingp (window)
+  "Return T if WINDOW is floating and NIL otherwise"
+  (typep window 'stumpwm::float-window))
+
+(defun always-on-top-off (window) ()
+       "Stop the given WINDOW from always being on top of other windows"
+       (let ((ontop-wins (group-on-top-windows (current-group))))
+         (setf (group-on-top-windows (current-group))
+               (remove window ontop-wins))))
+
+(defun always-on-top-on (window) ()
+       "Set the given WINDOW to always be on top of other windows"
+       (let ((w window)
+             (windows (the list (group-on-top-windows (current-group)))))
+         (when w
+           (unless (find w windows)
+             (push window (group-on-top-windows (current-group)))))))
+
+(defmacro with-on-top (win &body body)
+  "Make sure WIN is on the top level while the body is running and
+restore it's always-on-top state afterwords"
+  (let ((cw (gensym))
+        (ontop (gensym)))
+    `(let* ((,cw ,win)
+            (,ontop (find ,cw (group-on-top-windows (current-group)))))
+       (unwind-protect
+           (progn (unless ,ontop (always-on-top-on ,cw))
+                  ,@body))
+       (unless ,ontop (always-on-top-off ,cw)))))
+(defun slop-get-pos ()
+  (mapcar #'parse-integer (ppcre:split "[^0-9]" (run-shell-command
+                                                 "slop -f \"%x %y %w %h\"" t))))
+
+(defun slop ()
+  "Slop the current window or just float if slop cli not present."
+  (when (executable-p "slop")
+    (let ((win    (current-window))
+          (group  (current-group))
+          (pos    (slop-get-pos)))
+      (stumpwm::float-window win group)
+      (stumpwm::float-window-move-resize win
+                                         :x (nth 0 pos)
+                                         :y (nth 1 pos)
+                                         :width (nth 2 pos)
+                                         :height (nth 3 pos))
+      (always-on-top-on win))))
+
+;;; Moving the mouse for me
+;; Used for warping the cursor
+(load-module "beckon")
+(defmacro with-focus-lost (&body body)
+  "Make sure WIN is on the top level while the body is running and
+restore it's always-on-top state afterwords"
+  `(progn (banish)
+          ,@body
+          (when (current-window)
+            (beckon:beckon))))
+
+(defcommand remove-lose-focus () ()
+  "Remove the window without feaking out because of :sloppy *mouse-focus-policy*"
+  (with-focus-lost (remove-split)))
+
+(defcommand fullscreen-and-raise () ()
+  "Fullscreen window and make sure it's on top of all other windows"
+  (with-on-top (stumpwm:current-window) (fullscreen)))
+
 ;;; Theme
 (setf *colors*
       '("#000000"   ;black
@@ -35,11 +121,7 @@
         "#53cdbd"   ;cyan
         "#ffffff")) ;white
 
-;; (setf *default-bg-color* "#e699cc")
-
 (update-color-map (current-screen))
-
-(setf *window-format* "%m%s%50t")
 
 ;;; Font
 (ql:quickload :clx-truetype)
@@ -61,6 +143,7 @@
                                 :antialias t)))))
 
 ;;; Basic Settings
+(setf *window-format* "%m%s%50t")
 (setf *mode-line-background-color* (car *colors*)
       *mode-line-foreground-color* (car (last *colors*))
       *mode-line-timeout* 1)
@@ -121,6 +204,7 @@
 
 ;; Window Movement
 (dyn-blacklist-command "move-window")
+(dyn-blacklist-command "remove-lose-focus")
 (define-key *top-map* (kbd "s-H") "move-window left")
 (define-key *top-map* (kbd "s-J") "move-window down")
 (define-key *top-map* (kbd "s-K") "move-window up")
@@ -139,18 +223,7 @@
 (when *initializing*
   (defconstant backlightfile "/sys/class/backlight/intel_backlight/brightness"))
 
-;; Xbacklight broak so I made this
-(defcommand brighten (val) ((:number "Change brightness by: "))
-  (with-open-file (fp backlightfile
-                      :if-exists :overwrite
-                      :direction :io)
-                      (write-sequence (write-to-string (+ (parse-integer (read-line fp nil)) val))
-                                      fp)))
-
-(let (;; If xbacklight doesn't work use this (requires special file permissions)
-      ;; (bdown "brighten -1000")
-      ;; (bup   "brighten  1000")
-      (bdown   "exec xbacklight -dec 10")
+(let ((bdown   "exec xbacklight -dec 10")
       (bup     "exec xbacklight -inc 10")
       (m *top-map*))
   (define-key m (kbd "s-C-s")                 bdown)
@@ -167,20 +240,11 @@
 (define-key *root-map* (kbd "C-c") "term")
 (define-key *root-map* (kbd "y") "eval (term \"cm\")")
 (define-key *root-map* (kbd "w") "exec ducksearch")
-
 (define-key *root-map* (kbd "b") "pull-from-windowlist")
-
-
-;; Hide the current window but don't freak out if the current focus
-;; policy is :sloppy.
-(defcommand remove-lose-focus () ()
-  (let ((*mouse-focus-policy* :ignore))
-    (remove-split)))
-
-;; (define-key *root-map* (kbd "r") "remove")
-(define-key *root-map* (kbd "r") "remove-lose-focus")
 (define-key *root-map* (kbd "R") "iresize")
-(define-key *root-map* (kbd "f") "fullscreen")
+(define-key *root-map* (kbd "B") "beckon")
+(define-key *root-map* (kbd "r") "remove-lose-focus")
+(define-key *root-map* (kbd "f") "fullscreen-and-raise")
 (define-key *root-map* (kbd "Q") "quit-confirm")
 
 (define-key *root-map* (kbd "SPC") "exec cabl -c")
@@ -192,10 +256,10 @@
 (grename "main")
 (gnewbg ".trash") ; hidden group
 (gnewbg "distractions") ; for discord and stuff
+(gnew-dynamic "dy")
 
 ;; Don't jump between groups when switching apps
 (setf *run-or-raise-all-groups* nil)
-(define-key *groups-map* (kbd "=") "change-default-split-ratio 1/2")
 (define-key *groups-map* (kbd "l") "change-default-layout")
 (define-key *groups-map* (kbd "d") "gnew-dynamic")
 (define-key *groups-map* (kbd "s") "gselect")
@@ -204,20 +268,6 @@
 (define-key *groups-map* (kbd "b") "global-pull-windowlist")
 
 ;;;; Hide and Show Windows
-(defun window-menu-format (w)
-  (list (format-expand *window-formatters* *window-format* w) w))
-
-(defun window-from-menu (windows)
-  (when windows
-    (second (select-from-menu
-             (group-screen (window-group (car windows)))
-             (mapcar 'window-menu-format windows)
-             "Select Window: "))))
-
-(defun windows-in-group (group)
-  (group-windows (find group (the list (screen-groups (current-screen)))
-                       :key 'group-name :test 'equal)))
-
 (defcommand pull-from-trash () ()
   (let* ((windows (windows-in-group ".trash"))
          (window  (window-from-menu windows)))
@@ -233,82 +283,58 @@
 
 
 ;;; Floating Windows
-;;;; Part of this was taken from https://github.com/lepisma/cfg
-(defun floatingp (window)
-  "Return T if WINDOW is floating and NIL otherwise"
-  (typep window 'stumpwm::float-window))
-
-(defun always-on-top-off (window) ()
-  "stop the given WINDOW from always being on top of other windows"
-  (let ((ontop-wins (group-on-top-windows (current-group))))
-    (setf (group-on-top-windows (current-group))
-          (remove window ontop-wins))))
-
-(defun always-on-top-on (window) ()
-  "set the given WINDOW to always be on top of other windows"
-  (let ((w window)
-        (windows (the list (group-on-top-windows (current-group)))))
-    (when w
-      (unless (find w windows)
-        (push window (group-on-top-windows (current-group)))))))
-
-
-(defun slop-get-pos ()
-  (mapcar #'parse-integer (ppcre:split "[^0-9]" (run-shell-command
-                                                 "slop -f \"%x %y %w %h\"" t))))
-
-(defun slop ()
-  "Slop the current window or just float if slop cli not present."
-  (when (executable-p "slop")
-    (let ((win    (current-window))
-          (group  (current-group))
-          (pos    (slop-get-pos)))
-      (stumpwm::float-window win group)
-      (stumpwm::float-window-move-resize win
-                                         :x (nth 0 pos)
-                                         :y (nth 1 pos)
-                                         :width (nth 2 pos)
-                                         :height (nth 3 pos))
-      (always-on-top-on win))))
-
 (defcommand toggle-slop-this () ()
   (let ((win    (current-window))
         (group  (current-group)))
     (cond
-      ((floatingp win)
-       (always-on-top-off win)
-       (stumpwm::unfloat-window win group))
-      (t (slop)))))
+     ((floatingp win)
+      (always-on-top-off win)
+      (stumpwm::unfloat-window win group))
+     (t (slop)))))
 
 (tr-define-key "z" "toggle-slop-this")
 
 ;;; Splits
 (defcommand hsplit-and-focus () ()
   "create a new frame on the right and focus it."
-  (hsplit)
-  (move-focus :right))
+  (with-focus-lost
+   (hsplit)
+   (move-focus :right)))
 
 (defcommand vsplit-and-focus () ()
   "create a new frame below and focus it."
-  (vsplit)
-  (move-focus :down))
+  (with-focus-lost
+   (vsplit)
+   (move-focus :down)))
 (define-key *root-map* (kbd "v") "hsplit-and-focus")
 (define-key *root-map* (kbd "s") "vsplit-and-focus")
+
+;; Extra mappings for dynamic windows
+(define-minor-mode my/tile-mode () ()
+  (:interactive t)
+  (:scope :dynamic-group)
+  (:top-map '(("s-v" . "exchange-with-master")
+              ("s-=" . "change-default-split-ratio 1/2")))
+  (:lighter-make-clickable nil)
+  (:lighter "MY/TILE"))
+;; (my/tile-mode)
 (loop :for i :in '("hsplit-and-focus"
-                 "vsplit-and-focus")
+                   "vsplit-and-focus")
       :do (dyn-blacklist-command i))
 
 ;;; Mode-Line
 (load-module "battery-portable")
 
-;; Get Fit
+;;;; Get Fit
 (declaim (type fixnum *reps*))
 (defvar *reps* 0
   "Variable for keeping track of reps")
+
 (defcommand add-reps (reps) ((:number "Enter reps: "))
   (declare (type fixnum reps))
   (when reps
     (setq *reps* (+ *reps* reps))))
+
 (defcommand reset-reps () ()
   (setq *reps* 0))
 
@@ -319,6 +345,7 @@
     m))
 (define-key *root-map* (kbd "ESC") '*gym-map*)
 
+;;;; Actual Modeline
 (setf *time-modeline-string* "%a, %b %d %I:%M%p")
 (setf *screen-mode-line-format*
       (list
@@ -336,8 +363,8 @@
 
 (defun enable-mode-line-everywhere ()
   (loop for screen in *screen-list* do
-    (loop for head in (screen-heads screen) do
-	    (enable-mode-line screen head t))))
+        (loop for head in (screen-heads screen) do
+              (enable-mode-line screen head t))))
 (enable-mode-line-everywhere)
 ;; turn on/off the mode line for the current head only.
 (define-key *top-map* (kbd "s-B") "mode-line")
@@ -346,42 +373,47 @@
 (load-module "swm-gaps")
 (setf swm-gaps:*inner-gaps-size* 13
       swm-gaps:*outer-gaps-size* 7
-      swm-gaps:*head-gaps-size* 7)
+      swm-gaps:*head-gaps-size* 0)
 (when *initializing*
   (swm-gaps:toggle-gaps))
 (define-key *groups-map* (kbd "g") "toggle-gaps")
 
 ;;; Remaps
 (define-remapped-keys
-    '(("(discord|Element|Google-chrome)"
-       ("C-a"   . "Home")
-       ("C-e"   . "End")
-       ("C-E"   . "C-e")
-       ("C-n"   . "Down")
-       ("C-p"   . "Up")
-       ("C-f"   . "Right")
-       ("C-b"   . "Left")
-       ("C-N"   . "S-Down")
-       ("C-P"   . "S-Up")
-       ("C-F"   . "S-Right")
-       ("C-B"   . "S-Left")
-       ("C-v"   . "Next")
-       ("M-v"   . "Prior")
-       ("M-w"   . "C-c")
-       ("C-w"   . ("C-S-Left" "C-x"))
-       ("C-y"   . "C-v")
-       ("M-<"   . "Home")
-       ("M->"   . "End")
-       ("C-M-b" . "M-Left")
-       ("C-M-f" . "M-Right")
-       ("M-f"   . "C-Right")
-       ("M-b"   . "C-Left")
-       ("C-s"   . "C-f")
-       ("C-j"   . "C-k")
-       ("C-/"   . "C-z")
-       ("C-k"   . ("C-S-End" "C-x"))
-       ("C-d"   . "Delete")
-       ("M-d"   . "C-Delete"))))
+  '(("(acme)"
+     ("C-b"   . "Left")
+     ("C-n"   . "Down")
+     ("C-p"   . "Up")
+     ("C-d"   . ("Right" "C-h")))
+    ("(discord|Element|Google-chrome)"
+     ("C-a"   . "Home")
+     ("C-e"   . "End")
+     ("C-E"   . "C-e")
+     ("C-n"   . "Down")
+     ("C-p"   . "Up")
+     ("C-f"   . "Right")
+     ("C-b"   . "Left")
+     ("C-N"   . "S-Down")
+     ("C-P"   . "S-Up")
+     ("C-F"   . "S-Right")
+     ("C-B"   . "S-Left")
+     ("C-v"   . "Next")
+     ("M-v"   . "Prior")
+     ("M-w"   . "C-c")
+     ("C-w"   . ("C-S-Left" "C-x"))
+     ("C-y"   . "C-v")
+     ("M-<"   . "Home")
+     ("M->"   . "End")
+     ("C-M-b" . "M-Left")
+     ("C-M-f" . "M-Right")
+     ("M-f"   . "C-Right")
+     ("M-b"   . "C-Left")
+     ("C-s"   . "C-f")
+     ("C-j"   . "C-k")
+     ("C-/"   . "C-z")
+     ("C-k"   . ("C-S-End" "C-x"))
+     ("C-d"   . "Delete")
+     ("M-d"   . "C-Delete"))))
 
 ;;; Undo And Redo Functionality
 (load-module "winner-mode")
@@ -395,7 +427,7 @@
 (defcommand emacs () () ; override default emacs command
   "Start emacs if emacsclient is not running and focus emacs if it is
 running in the current group"
-  (run-or-raise "emacsclient -c -a 'emacs'" '(:class "Emacs")))
+  (run-or-raise "oemacsclient -c -a 'emacs'" '(:class "Emacs")))
 ;; Treat emacs splits like Xorg windows
 (defun is-emacs-p (win)
   "nil if the WIN"
@@ -463,28 +495,38 @@ necessary programs for recording a new YouTube video"
   (setup-recording-environment "recording"))
 
 
-;;; Moving the mouse for me
-;; Used for warping the cursor
-(load-module "beckon")
-(define-key *root-map* (kbd "B") "beckon")
-
 ;;; Window focusing
+(defun switched-emacs-window (dir)
+  (declare  (type Keyword dir)
+            (optimize (speed 3) (safety 1)))
+
+  (if (is-emacs-p (current-window))
+      ;; There is not emacs window in that direction
+      (not
+       (length=
+        (emacs-winmove (string-downcase (string dir)))
+        1))
+    nil))
+
+(defun maybe-beckon ()
+  (if (current-window)
+      (beckon:beckon)
+    nil))
+
 (defun better-move-focus (ogdir)
   "Similar to move-focus but also treats emacs windows as Xorg windows"
-  (declare (type (member :up :down :left :right) ogdir))
-  (flet ((mv () (progn (move-focus ogdir)
+  (declare (type (member :up :down :left :right) ogdir)
+           (optimize (speed 3) (safety 3)))
 
-                       ;; Warp cursor when changing focus
-                       (when (current-window)
-                         (beckon:beckon))
-                       )))
-    (if (is-emacs-p (current-window))
-        (when ;; There is not emacs window in that direction
-            (length= (emacs-winmove (string-downcase (string ogdir)))
-                     1)
-          (mv))
-        (mv)))
-  )
+  (let ((cw  (current-window)))
+    (cond
+     ((not cw) (progn (move-focus ogdir)
+                      (maybe-beckon)))
+     ((switched-emacs-window ogdir))
+     ;; If fullscreen don't change focus
+     ((stumpwm:window-fullscreen cw))
+     (t (progn (move-focus ogdir)
+               (maybe-beckon))))))
 
 
 (defcommand my-mv (dir) ((:direction "Enter direction: "))
@@ -507,8 +549,8 @@ necessary programs for recording a new YouTube video"
          :dont-close t
          :port port))
     (error (c)
-      (format *error-output* "Error starting slynk: ~a~%" c)
-      )))
+           (format *error-output* "Error starting slynk: ~a~%" c)
+           )))
 
 (defcommand restart-slynk () ()
   "Restart Slynk and reload source.
@@ -518,7 +560,7 @@ This is needed if Sly updates while StumpWM is running"
 
 (defcommand stop-slynk () ()
   "Restart Slynk and reload source.
-This is needed if Sly updates while StumpWM is running"
+  This is needed if Sly updates while StumpWM is running"
   (slynk:stop-server *slynk-port*))
 
 (defcommand connect-to-sly () ()
@@ -526,3 +568,9 @@ This is needed if Sly updates while StumpWM is running"
     (start-slynk))
   (exec-el (sly-connect "localhost" *slynk-port*))
   (emacs))
+
+(define-stumpwm-type :dunstctl (input prompt)
+  (completing-read (current-screen) prompt '("context" "action" "close" "history")))
+
+(defcommand dunst () ()
+  (run-shell-command "dunstctl context"))
